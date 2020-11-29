@@ -1,11 +1,3 @@
-"""
-Example SQLite Python Database
-==============================
-
-Experiment with the functions below to understand how the
-database is created, data is inserted, and data is retrieved
-
-"""
 import sqlite3
 from datetime import datetime
 
