@@ -5,6 +5,8 @@ def login():
     """Given user name and password,
     return message or main menu"""
     log_in = False
+    MAX_TIME = 3
+    incorrect_pw = 0
     while not log_in:
         # Open password table
         user_list = open("list.csv", "r")
@@ -19,7 +21,11 @@ def login():
                     access_level = line.split(',')[2]
         # Print mismatching message
         if not log_in:
-            print("Incorrect user name or password. Try again.")
+            incorrect_pw += 1
+            print("Incorrect user name or password.", MAX_TIME - incorrect_pw, "time(s) left.")
+            if incorrect_pw == 3:
+                print("Login failed. Exiting the system.")
+                sys.exit()
         # Close list file
         user_list.close()
     # Print user level
