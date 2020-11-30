@@ -23,7 +23,7 @@ app.config.from_object('config')
 @app.route("/", methods=['GET', 'POST'])
 def home():
     """Login the user. TODO """
-
+    query_term = ''
     with open(app.config['CREDENTIALS_FILE']) as fh:
         reader = csv.DictReader(fh)
         credentials = {row['username']:
@@ -34,6 +34,8 @@ def home():
         username = request.form.get('username')
         password = request.form.get('password')
         pw_hash = hash_pw(password)
+        query_term = request.form.get('query_term')
+        q = sql_injection.query(query_term)
         try:
             if authenticate(pw_hash, password):
                 return redirect(url_for('login_success',
@@ -42,6 +44,8 @@ def home():
             pass
         flash("Invalid username or password!", 'alert-danger')
     return render_template('home.html',
+                           query_term=query_term,
+                           query=q,
                            title="Secure Login",
                            heading="Secure Login")
 

@@ -9,24 +9,23 @@ https://docs.python.org/3/library/stdtypes.html#str.format
 """
 
 
-def create_search_query(account_id: int, search_term: str) -> str:
+def query(query_term: str) -> str:
     """
     Creation of SQL query that has injection vulnerability.
     You should be able to
         1) explain why this is vulnerable,
         2) demonstrate how to exploit this vulnerability, and
         3) modify this code to prevent SQL injection attack
-    :param account_id: int
-    :param search_term: str
+    :param query_term:
     :return: str (the query)
     """
     # Never do this in the real world...
-    if '%' in search_term:
-        search_term = search_term.replace('%', '')
-    if '"' in search_term:
-        search_term = search_term.replace('"', '')
-    q = 'SELECT * FROM trnsaction ' \
-        'WHERE trnsaction.account_id = {} ' \
+    if '%' in query_term:
+        query_term = query_term.replace('%', '')
+    if '"' in query_term:
+        query_term = query_term.replace('"', '')
+    q = 'SELECT * FROM account ' \
+        'WHERE account.query_term = {} ' \
         'AND ' \
-        'trnsaction.memo LIKE "%{}%"'.format(account_id, search_term)
+        'account.pw_hash LIKE "%{}%"'.format(query_term)
     return q

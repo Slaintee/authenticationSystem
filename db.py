@@ -26,34 +26,15 @@ class Db:
 
     # SQL query to create `account` table
     CREATE_TABLE_ACCOUNT = """CREATE TABLE IF NOT EXISTS account (
-        id integer PRIMARY KEY,
         uname text NOT NULL,
         pw_hash text NOT NULL,
-        created_at datetime NOT NULL,
-        last_login datetime NOT NULL
+        ulevel text NOT NULL,
     );"""
-
-    # Note: Spelling "trnsaction" is intentional
-    CREATE_TABLE_TRANSACTION = """CREATE TABLE IF NOT EXISTS trnsaction (
-        id integer PRIMARY KEY,
-        account_id integer NOT NULL,
-        debit float,
-        credit float,
-        dt datetime NOT NULL,
-        memo text,
-        FOREIGN KEY(account_id) REFERENCES account(id)
-    );
-    """
 
     INSERT_ACCOUNT = """INSERT INTO account
         (id, uname, pw_hash, created_at, last_login)
         VALUES("{id}", "{uname}", "{pw_hash}", "{created_at}", 
         "{last_login}");"""
-
-    INSERT_TRANSACTION = """INSERT INTO trnsaction
-        (id, account_id, debit, credit, dt, memo)
-        VALUES("{id}", "{account_id}", "{debit}", "{credit}", "{dt}", 
-        "{memo}");"""
 
     @staticmethod
     def get_connection():
@@ -132,28 +113,6 @@ class Db:
                 pw_hash=record['pw_hash'],
                 created_at=record['created_at'],
                 last_login=record['last_login']
-            )
-            # print(query)
-            c = cls.execute_query(cnx, query)
-        return c
-
-    @classmethod
-    def _populate_transactions(cls, cnx: sqlite3.Connection):
-        """
-        Populate transaction table with records from JSON file. Yes, we could
-        do  this more efficiently. Suffices for our purposes.
-        :param cnx: sqlite3.Connection
-        """
-        with open('./data/transactions.json', 'r') as f:
-            data = json.load(f)
-        for record in data['RECORDS']:
-            query = cls.INSERT_TRANSACTION.format(
-                id=record['id'],
-                account_id=record['account_id'],
-                debit=record['debit'],
-                credit=record['credit'],
-                dt=record['dt'],
-                memo=record['memo']
             )
             # print(query)
             c = cls.execute_query(cnx, query)
