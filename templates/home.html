@@ -1,14 +1,29 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<div id="lesson-choices" class="card">
+<div class="card">
     <div class="card-body">
-        <h5><em>Lessons:</em></h5>
-        <ul>
-            {% for lesson in show %}
-                <li>{{ lesson }}: <a href="{{ url_for( show[lesson][0]) }}">{{ show[lesson][1]}} </a></li>
-            {% endfor %}
-        </ul>
+        <div class="row mt-3">
+            <div class="col md-6">
+                <form action="{{ url_for('.home') }}" method="POST"
+                      id="login_form">
+                    <div class="form-group">
+                        <label for="name">Username:</label><input
+                            class="form-control" type="text" id="username"
+                            name="username" required><br/>
+                        <label for="password">Password:</label><input
+                            class="form-control" type='password' id="password"
+                            name="password" required>
+                        <button type="submit" class="btn btn-primary mt-4">
+                            Submit
+                        </button>
+                        <button type="submit" class="btn btn-primary mt-4">
+                            Register
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 

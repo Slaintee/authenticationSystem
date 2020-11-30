@@ -22,42 +22,13 @@ app.config.from_object('config')
 
 @app.route("/", methods=['GET', 'POST'])
 def home():
-    """Home page """
-    return render_template('home.html',
-                           title="Home Page",
-                           heading="Home Page",
-                           show=display)
-
-
-@app.route("/transactions", methods=['GET', 'POST'])
-def transactions():
-    """Transaction injection attack """
-    search_term = ''
-    if request.method == 'POST':
-        search_term = request.form.get('search_term')
-        q = sql_injection.create_search_query(1234, search_term)
-    else:
-        q = 'SELECT * FROM trnsaction WHERE trnsaction.account_id = 1234'
-    cnx = Db.get_connection()
-    c = Db.execute_query(cnx, q)
-    rows = c.fetchall()
-    return render_template('transactions.html',
-                           search_term=search_term,
-                           rows=rows,
-                           query=q,
-                           title="My Transactions",
-                           heading="My Transactions")
-
-
-@app.route("/login", methods=['GET', 'POST'])
-def login():
     """Login the user. TODO """
 
     with open(app.config['CREDENTIALS_FILE']) as fh:
         reader = csv.DictReader(fh)
         credentials = {row['username']:
-                           {'acct_id': row['id'],
-                            'pw_hash': row['password_hash']}
+                            {'acct_id': row['id'],
+                             'pw_hash': row['password_hash']}
                        for row in reader}
     if request.method == 'POST':
         username = request.form.get('username')
@@ -70,7 +41,7 @@ def login():
         except KeyError:
             pass
         flash("Invalid username or password!", 'alert-danger')
-    return render_template('login.html',
+    return render_template('home.html',
                            title="Secure Login",
                            heading="Secure Login")
 
@@ -81,12 +52,6 @@ def login_success(id_):
     return render_template('customer_home.html',
                            title="Customer Home",
                            heading="Customer Home")
-
-
-@app.route('/catcoin_stock')
-def cat_coin_stock():
-    my_netid = "jreddy1"  # Replace with your UVM NetID here!
-    return render_template("catcoin_stock.html", netid=my_netid)
 
 
 @app.route("/hashit", methods=['GET', ])
