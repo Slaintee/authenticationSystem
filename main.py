@@ -1,4 +1,61 @@
-import sys
+"""
+Lab 8
+Ken Zhang
+CS 166 / Fall 2020
+"""
+
+from datetime import datetime
+import sqlite3
+
+
+def create_db():
+    """ Create table 'users' in 'user' database """
+    try:
+        conn = sqlite3.connect('user.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE users
+                    (
+                    username text,
+                    password text,
+                    access text
+                    )''')
+        conn.commit()
+        return True
+    except BaseException:
+        return False
+    finally:
+        if c is not None:
+            c.close()
+        if conn is not None:
+            conn.close()
+
+
+def get_date():
+    """ Generate timestamp for data inserts """
+    d = datetime.now()
+    return d.strftime("%m/%d/%Y, %H:%M:%S")
+
+
+def add_user():
+    """ Example data insert into users table """
+    new_username = str(input("Please enter new username: "))  # Need exception handling
+    new_password = str(input("Please enter new password: "))
+    new_access = "1"
+    data_to_insert = [(new_username, new_password,  new_access)]
+    try:
+        conn = sqlite3.connect('user.db')
+        c = conn.cursor()
+        c.executemany("INSERT INTO users VALUES (?, ?, ?)", data_to_insert)
+        conn.commit()
+    except sqlite3.IntegrityError:
+        print("Error. Tried to add duplicate record!")
+    else:
+        print("Success")
+    finally:
+        if c is not None:
+            c.close()
+        if conn is not None:
+            conn.close()
 
 
 def login():
@@ -7,31 +64,36 @@ def login():
     log_in = False
     MAX_TIME = 3
     incorrect_pw = 0
-    while not log_in:
-        # Open password table
-        user_list = open("list.csv", "r")
-        # Ask for user name and password input
-        user_name = input("User name: ")
-        password = str(input("Password: "))
-        # Read user list
-        for line in user_list:
-            if line.split(',')[0] == user_name:
-                if line.split(',')[1] == password:
-                    log_in = True
-                    access_level = line.split(',')[2]
-        # Print mismatching message
-        if not log_in:
-            incorrect_pw += 1
-            print("Incorrect user name or password.", MAX_TIME - incorrect_pw, "time(s) left.")
-            if incorrect_pw == 3:
-                print("Login failed. Exiting the system.")
-                sys.exit()
-        # Close list file
-        user_list.close()
-    # Print user level
-    print("Welcome level " + access_level.rstrip() + " user " + user_name)
-    # Return access level
-    return int(access_level)
+    try:
+        while not log_in:
+            conn = sqlite3.connect("user.db")
+            c = conn.cursor()
+            for row in c.execute("SELECT * FROM users"):
+                user[row[0]] = {'password': row[1], 'access': row[2]}
+
+            # Check if user is valid
+            if user[username]['password'] == password:
+                print('------- welcome, {} -------'.format(username))
+                break
+            else:
+                # 3 times max if input incorrect
+                incorrect_pw += 1
+                print("Incorrect user name or password.", MAX_TIME - incorrect_pw, "time(s) left.")
+                if incorrect_pw == 3:
+                    print("Login failed. Exiting the system.")
+                    exit()
+
+    except sqlite3.DatabaseError:
+        print("Error. Could not retrieve data.")
+    except KeyError:
+        # using invalid username will terminate the program
+        print("{} is not a valid username".format(username))
+        exit()
+    finally:
+        if c is not None:
+            c.close()
+        if conn is not None:
+            conn.close()
 
 
 def menu_area():
@@ -47,14 +109,14 @@ def not_authorized():
     """Return output if user is not authorized for this area"""
     print(" ")
     print("You are not authorized to access this area.")
-    choice = input("Return to the menu? (y/n) ")
-    if choice == 'y':
+    menu_choice = input("Return to the menu? (y/n) ")
+    if menu_choice == 'y':
         menu_area()
-    elif choice == 'n':
-        sys.exit()
+    elif menu_choice == 'n':
+        exit()
     else:
         invalid()
-        sys.exit()
+        exit()
 
 
 def time_reporting():
@@ -91,14 +153,43 @@ def invalid():
     """Return output if input is invalid"""
     print(" ")
     print("Invalid input")
-    print("System logged out.")
 
 
-def authentication():
+if __name__ == "__main__":
     """Given user area choice, check user level
     and return whether validated or whether succeed"""
+    # Print head
+    print("Welcome, enter the user name and password to log in thr system.")
+    # Authenticate user
+    create_db()
+    user = {}
+    login_choice = 0
+    while login_choice != 1 or login_choice != 2:
+        try:
+            login_choice = int(input("1. Log in\n2. Register\n->"))
+            if login_choice == 1:
+                print("------------ Login ------------")
+                # Login
+                username = input("Enter your username: ").strip()
+                password = input("Enter your password: ").strip()
+                break
+            elif login_choice == 2:
+                add_user()
+                print("------------ Register ------------")
+                # Register
+                username = input("Create a username: ").strip()
+                password = input("Creat a password: ").strip()
+                break
+            else:
+                # avoid anything other than 1 and 2 entered
+                invalid()
+        except ValueError:
+            # avoid anything other than number entered
+            invalid()
+
+    login()
     # Ask login function for the access level
-    access_level = login()
+    access_level = user[username]['access']
     # Call menu_area function
     menu_area()
     # Ask user choice as input
@@ -106,7 +197,7 @@ def authentication():
         choice = int(input("Requesting for menu area: "))
 
         # Authenticate level 1
-        while access_level == 1:
+        while access_level == '1':
             if choice == 1:
                 time_reporting()
                 break
@@ -121,7 +212,7 @@ def authentication():
                 break
 
         # Authenticate level 2
-        while access_level == 2:
+        while access_level == '2':
             if choice == 1:
                 time_reporting()
                 break
@@ -139,7 +230,7 @@ def authentication():
                 break
 
         # Authenticate level 3
-        while access_level == 3:
+        while access_level == '3':
             if choice == 1:
                 time_reporting()
                 break
@@ -161,15 +252,4 @@ def authentication():
     # Catch ValueError
     except ValueError:
         invalid()
-        sys.exit()
-
-
-def main():
-    """Main function"""
-    # Print head
-    print("Welcome, enter the user name and password to log in thr system.")
-    # Authenticate user
-    authentication()
-
-
-main()
+        exit()
