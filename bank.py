@@ -12,7 +12,6 @@ import csv
 from config import display
 from flask import Flask, render_template, request, url_for, flash, redirect
 from db import Db
-from lessons import sql_injection
 from lessons.password_crack import hash_pw, authenticate
 
 app = Flask(__name__, static_folder='instance/static')
@@ -35,7 +34,6 @@ def home():
         password = request.form.get('password')
         pw_hash = hash_pw(password)
         query_term = request.form.get('query_term')
-        q = sql_injection.query(query_term)
         try:
             if authenticate(pw_hash, password):
                 return redirect(url_for('login_success',
@@ -45,7 +43,6 @@ def home():
         flash("Invalid username or password!", 'alert-danger')
     return render_template('home.html',
                            query_term=query_term,
-                           query=q,
                            title="Secure Login",
                            heading="Secure Login")
 

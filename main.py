@@ -4,7 +4,6 @@ Ken Zhang
 CS 166 / Fall 2020
 """
 
-from datetime import datetime
 import sqlite3
 
 
@@ -30,18 +29,19 @@ def create_db():
             conn.close()
 
 
-def get_date():
-    """ Generate timestamp for data inserts """
-    d = datetime.now()
-    return d.strftime("%m/%d/%Y, %H:%M:%S")
-
-
 def add_user():
     """ Example data insert into users table """
-    new_username = str(input("Please enter new username: "))  # Need exception handling
-    new_password = str(input("Please enter new password: "))
-    new_access = "1"
-    data_to_insert = [(new_username, new_password,  new_access)]
+    try:
+        print("Do not enter quotation mark otherwise it will be removed.")
+        new_username = str(input("Please enter new username: "))
+        sql_injection(new_username)
+        new_password = str(input("Please enter new password: "))
+        sql_injection(new_password)
+        new_access = "1"
+        data_to_insert = [(new_username, new_password, new_access)]
+    except ValueError:
+        invalid()
+        exit()
     try:
         conn = sqlite3.connect('user.db')
         c = conn.cursor()
@@ -155,6 +155,12 @@ def invalid():
     print("Invalid input")
 
 
+def sql_injection(value):
+    if '"' in value:
+        value = value.replace('"', '')
+    return value
+
+
 if __name__ == "__main__":
     """Given user area choice, check user level
     and return whether validated or whether succeed"""
@@ -171,14 +177,17 @@ if __name__ == "__main__":
                 print("------------ Login ------------")
                 # Login
                 username = input("Enter your username: ").strip()
+                sql_injection(username)
                 password = input("Enter your password: ").strip()
+                sql_injection(password)
                 break
             elif login_choice == 2:
                 add_user()
-                print("------------ Register ------------")
-                # Register
-                username = input("Create a username: ").strip()
-                password = input("Creat a password: ").strip()
+                print("------------ Login ------------")
+                username = input("Enter your username: ").strip()
+                sql_injection(username)
+                password = input("Enter your password: ").strip()
+                sql_injection(password)
                 break
             else:
                 # avoid anything other than 1 and 2 entered
