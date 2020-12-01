@@ -12,7 +12,7 @@ import csv
 from config import display
 from flask import Flask, render_template, request, url_for, flash, redirect
 from db import Db
-from lessons.password_crack import hash_pw, authenticate
+from password_crack import hash_pw, authenticate
 
 app = Flask(__name__, static_folder='instance/static')
 

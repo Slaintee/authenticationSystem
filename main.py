@@ -4,7 +4,7 @@ Ken Zhang
 CS 166 / Fall 2020
 """
 
-import password_crack
+from password_crack import hash_pw, authenticate
 import sqlite3
 
 
@@ -35,10 +35,10 @@ def add_user():
     try:
         print("Do not enter quotation mark otherwise it will be removed.")
         new_username = str(input("Please enter new username: "))
-        sql_injection(new_username)
+        new_username = sql_injection(new_username)
         new_password = str(input("Please enter new password: "))
-        sql_injection(new_password)
-        password_crack.hash_pw(new_password)
+        new_password = sql_injection(new_password)
+        new_password = hash_pw(new_password)
         new_access = "1"
         data_to_insert = [(new_username, new_password, new_access)]
     except ValueError:
@@ -63,8 +63,6 @@ def add_user():
 def login(username, password):
     """Given user name and password,
     return message or main menu"""
-
-
     try:
         conn = sqlite3.connect("user.db")
         c = conn.cursor()
@@ -72,11 +70,8 @@ def login(username, password):
             user[row[0]] = {'password': row[1], 'access': row[2]}
 
         # Check if user is valid
-        if user[username]['password'] == password:
+        if authenticate(user[username]['password'], password):
             logged_in = True
-
-            # print('------- welcome, {} -------'.format(username))
-
         else:
             # 3 times max if input incorrect
             logged_in = False
@@ -166,11 +161,12 @@ def enter():
     while not logged_in:
         print("------------ Login ------------")
         username = input("Enter your username: ").strip()
-        sql_injection(username)
+        username = sql_injection(username)
         password = input("Enter your password: ").strip()
-        sql_injection(password)
+        password = sql_injection(password)
         logged_in = login(username, password)
         if logged_in:
+            print('------- welcome, {} -------'.format(username))
             break
         else:
             max_time -= 1
