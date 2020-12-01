@@ -4,6 +4,7 @@ Ken Zhang
 CS 166 / Fall 2020
 """
 
+import password_crack
 import sqlite3
 
 
@@ -37,6 +38,7 @@ def add_user():
         sql_injection(new_username)
         new_password = str(input("Please enter new password: "))
         sql_injection(new_password)
+        password_crack.hash_pw(new_password)
         new_access = "1"
         data_to_insert = [(new_username, new_password, new_access)]
     except ValueError:
@@ -58,30 +60,27 @@ def add_user():
             conn.close()
 
 
-def login():
+def login(username, password):
     """Given user name and password,
     return message or main menu"""
-    log_in = False
-    MAX_TIME = 3
-    incorrect_pw = 0
-    try:
-        while not log_in:
-            conn = sqlite3.connect("user.db")
-            c = conn.cursor()
-            for row in c.execute("SELECT * FROM users"):
-                user[row[0]] = {'password': row[1], 'access': row[2]}
 
-            # Check if user is valid
-            if user[username]['password'] == password:
-                print('------- welcome, {} -------'.format(username))
-                break
-            else:
-                # 3 times max if input incorrect
-                incorrect_pw += 1
-                print("Incorrect user name or password.", MAX_TIME - incorrect_pw, "time(s) left.")
-                if incorrect_pw == 3:
-                    print("Login failed. Exiting the system.")
-                    exit()
+
+    try:
+        conn = sqlite3.connect("user.db")
+        c = conn.cursor()
+        for row in c.execute("SELECT * FROM users"):
+            user[row[0]] = {'password': row[1], 'access': row[2]}
+
+        # Check if user is valid
+        if user[username]['password'] == password:
+            logged_in = True
+
+            # print('------- welcome, {} -------'.format(username))
+
+        else:
+            # 3 times max if input incorrect
+            logged_in = False
+        return logged_in
 
     except sqlite3.DatabaseError:
         print("Error. Could not retrieve data.")
@@ -161,6 +160,27 @@ def sql_injection(value):
     return value
 
 
+def enter():
+    max_time = 3
+    logged_in = False
+    while not logged_in:
+        print("------------ Login ------------")
+        username = input("Enter your username: ").strip()
+        sql_injection(username)
+        password = input("Enter your password: ").strip()
+        sql_injection(password)
+        logged_in = login(username, password)
+        if logged_in:
+            break
+        else:
+            max_time -= 1
+            print("Incorrect user name or password.", max_time, "time(s) left.")
+            if max_time == 0:
+                print("Login failed. Exiting the system.")
+                exit()
+    return username
+
+
 if __name__ == "__main__":
     """Given user area choice, check user level
     and return whether validated or whether succeed"""
@@ -170,24 +190,18 @@ if __name__ == "__main__":
     create_db()
     user = {}
     login_choice = 0
+
     while login_choice != 1 or login_choice != 2:
         try:
             login_choice = int(input("1. Log in\n2. Register\n->"))
             if login_choice == 1:
-                print("------------ Login ------------")
                 # Login
-                username = input("Enter your username: ").strip()
-                sql_injection(username)
-                password = input("Enter your password: ").strip()
-                sql_injection(password)
+                username = enter()
                 break
             elif login_choice == 2:
                 add_user()
-                print("------------ Login ------------")
-                username = input("Enter your username: ").strip()
-                sql_injection(username)
-                password = input("Enter your password: ").strip()
-                sql_injection(password)
+                # Login
+                username = enter()
                 break
             else:
                 # avoid anything other than 1 and 2 entered
@@ -196,7 +210,6 @@ if __name__ == "__main__":
             # avoid anything other than number entered
             invalid()
 
-    login()
     # Ask login function for the access level
     access_level = user[username]['access']
     # Call menu_area function
