@@ -4,6 +4,7 @@ Ken Zhang
 CS 166 / Fall 2020
 """
 
+from authentication import password_strength
 from password_crack import hash_pw, authenticate
 import sqlite3
 
@@ -36,9 +37,12 @@ def add_user():
         print("Do not enter quotation mark otherwise it will be removed.")
         new_username = str(input("Please enter new username: "))
         new_username = sql_injection(new_username)
-        new_password = str(input("Please enter new password in length of between 8 and 25: "))
-        while len(new_password) < 8 or len(new_password) > 25:
-            new_password = str(input("Invalid length. Enter again: "))
+        new_password = str(input("Please enter new password in length of between 8 and 25, \n"
+                                 "and have at least one number, at least one lowercase letter, \n"
+                                 "at least one uppercase letter, and at at least one special character(!@#$%^&*) \n"
+                                 "in the password: "))
+        while not password_strength(new_password):
+            new_password = str(input("Invalid input. Enter again: "))
         new_password = sql_injection(new_password)
         new_password = hash_pw(new_password)
         new_access = "1"
