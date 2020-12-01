@@ -205,6 +205,12 @@ def sql_injection(value):
 
 
 def enter(user):
+    """
+    Limit registered user has 3 times to log in.
+
+    :param user:
+    :return: str
+    """
     # User has 3 times to enter the existing account
     max_time = 3
     logged_in = False
