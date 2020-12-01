@@ -6,7 +6,9 @@ CS 166 / Fall 2020
 
 from authentication import password_strength
 from password_crack import hash_pw, authenticate
+import random
 import sqlite3
+import string
 
 
 def create_db():
@@ -64,6 +66,26 @@ def add_user():
             c.close()
         if conn is not None:
             conn.close()
+
+
+def generate_password():
+    src = string.ascii_letters + string.digits + "!@#$%^&*"
+    # Make random length of password
+    num = random.randint(4, 21)
+    # Choose num characters from src
+    list_passwd_all = random.sample(src, num)
+    # Make it includes digit
+    list_passwd_all.extend(random.sample(string.digits, 1))
+    # Make it includes lowercase
+    list_passwd_all.extend(random.sample(string.ascii_lowercase, 1))
+    # Make it includes uppercase
+    list_passwd_all.extend(random.sample(string.ascii_uppercase, 1))
+    # Make it includes special character
+    list_passwd_all.extend(random.sample("!@#$%^&*", 1))
+    # Shuffle the list and make it to string
+    random.shuffle(list_passwd_all)
+    str_passwd = ''.join(list_passwd_all)
+    return str_passwd
 
 
 def login(username, password):
