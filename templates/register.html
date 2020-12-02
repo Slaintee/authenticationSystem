@@ -3,7 +3,7 @@
 
 <div class="card">
     <div class="card-header">
-				<h3>Log In</h3>
+				<h3>Register</h3>
 			</div>
     <div class="card-body">
         <div class="row mt-3">
@@ -17,9 +17,12 @@
                         <label for="password">Password:</label><input
                             class="form-control" type='password' id="password"
                             name="password" required>
+                        <button type="submit" class="btn btn-primary mt-4">
+                            Generate Password
+                        </button>
                         {{ form.submit(class="btn btn-primary mt-4") }}
-                        <a href="{{ url_for('register') }}">
-                            <input type="button" value='To Register' class="btn btn-primary mt-4">
+                        <a href="{{ url_for('login') }}">
+                            <input type="button" value='To Log in' class="btn btn-primary mt-4">
                         </a>
                     </div>
                 </form>
