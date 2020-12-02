@@ -168,26 +168,12 @@ def login():
     return render_template("login.html", form=form)
 
 
-@app.route("/logout")
-def logout():
-    """
-    Log out from web
-    """
-    if "user" in session:
-        user = session["user"]
-        flash(f"{user} has logged out.", "success")
-    session.pop("user", None)
-    return redirect(url_for("login"))
-
-
 @app.route("/user", methods=["POST", "GET"])
 def user():
     """User page"""
     if "user" in session:
         user = session["user"]
         return render_template("user.html", user=user)
-    elif request.method == "POST":
-        redirect(url_for("logout"))
     else:
         return redirect(url_for("login"))
 
