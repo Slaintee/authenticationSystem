@@ -4,12 +4,12 @@ Ken Zhang
 CS 166 / Fall 2020
 """
 
-from flask import Flask, redirect, url_for, render_template, flash, session, request
+from flask import Flask, redirect, url_for, render_template, flash, session
 from flask_wtf import FlaskForm
 from os import urandom
 from password_crack import hash_pw, authenticate
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length, ValidationError
+from wtforms.validators import DataRequired, ValidationError
 import random
 import sqlite3
 import string
@@ -123,6 +123,51 @@ def generate_password():
     return str_passwd
 
 
+def sql_injection(value):
+    """
+    Stop user entering " to prevent sql injection
+
+    :param value: str
+    :return: str
+    """
+    if '"' in value:
+        value = value.replace('"', '')
+        return value
+    else:
+        return value
+
+
+def enter(user):
+    """
+    Limit registered user has 3 times to log in.
+
+    :param user:
+    :return: str
+    """
+    # User has 3 times to enter the existing account
+    max_time = 3
+    logged_in = False
+    while not logged_in:
+        # Enter the username and password, and prevent from sql injection
+        print("------------ Login ------------")
+        username = input("Enter your username: ").strip()
+        username = sql_injection(username)
+        password = input("Enter your password: ").strip()
+        password = sql_injection(password)
+        logged_in = login(username, password, user)
+        if logged_in:
+            print('------- welcome, {} -------'.format(username))
+            break
+        else:
+            # If account invalid more than 3 times, system out
+            max_time -= 1
+            print("Incorrect user name or password.", max_time, "time(s) left.")
+            if max_time == 0:
+                print("Login failed. Exiting the system.")
+                exit()
+    return username
+
+
 @app.route("/", methods=["POST", "GET"])
 def login():
     """
@@ -189,54 +234,9 @@ def register():
         password = sql_injection(form.password.data)
         # Insert user to database
         add_user(username, hash_pw(password))
-        flash(f'{form.username.data} has created!', "success")
+        flash(f'{form.username.data} has registered!', "success")
         return redirect(url_for("login"))
     return render_template('register.html', form=form)
-
-
-def sql_injection(value):
-    """
-    Stop user entering " to prevent sql injection
-
-    :param value: str
-    :return: str
-    """
-    if '"' in value:
-        value = value.replace('"', '')
-        return value
-    else:
-        return value
-
-
-def enter(user):
-    """
-    Limit registered user has 3 times to log in.
-
-    :param user:
-    :return: str
-    """
-    # User has 3 times to enter the existing account
-    max_time = 3
-    logged_in = False
-    while not logged_in:
-        # Enter the username and password, and prevent from sql injection
-        print("------------ Login ------------")
-        username = input("Enter your username: ").strip()
-        username = sql_injection(username)
-        password = input("Enter your password: ").strip()
-        password = sql_injection(password)
-        logged_in = login(username, password, user)
-        if logged_in:
-            print('------- welcome, {} -------'.format(username))
-            break
-        else:
-            # If account invalid more than 3 times, system out
-            max_time -= 1
-            print("Incorrect user name or password.", max_time, "time(s) left.")
-            if max_time == 0:
-                print("Login failed. Exiting the system.")
-                exit()
-    return username
 
 
 if __name__ == "__main__":
