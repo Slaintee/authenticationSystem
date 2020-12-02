@@ -4,19 +4,55 @@ Ken Zhang
 CS 166 / Fall 2020
 """
 
-from authentication import password_strength
-from config import display
-import csv
-from flask import Flask, render_template, request, url_for, flash, redirect
-from db import Db
+from flask import Flask, redirect, url_for, render_template, flash, session, request
+from flask_wtf import FlaskForm
 from password_crack import hash_pw, authenticate
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Length, ValidationError
 import random
 import sqlite3
 import string
+import traceback
 
-app = Flask(__name__, static_folder='instance/static')
 
-app.config.from_object('config')
+# Register page's form group
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField("Register")
+
+    def validate_password(self, password):
+        """
+        Check basic password strength. Return true if password
+        meets minimum complexity criteria, false otherwise.
+
+        :param self: str
+        :param password: str
+        """
+        SPECIAL_CHAR = "!@#$%^&*"
+        PASSWORD_MIN_LENGTH = 8
+        PASSWORD_MAX_LENGTH = 25
+        if not any(char.isdigit() for char in password.data):
+            raise ValidationError("Password should have at least one number")
+        elif not any(char.isupper() for char in password.data):
+            raise ValidationError("Password should have at least one uppercase")
+        elif not any(char.islower() for char in password.data):
+            raise ValidationError("Password should have at least one lowercase")
+        elif not any(char in SPECIAL_CHAR for char in password.data):
+            raise ValidationError("Password should have at least one special character (!@#$%^&*)")
+        elif len(password.data) < PASSWORD_MIN_LENGTH or len(password.data) > PASSWORD_MAX_LENGTH:
+            raise ValidationError("Password should have a length of between 8 and 25")
+
+
+# Log in page's form group
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField("Log In")
+
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = '\xca\x0c\x86\x04\x98@\x02b\x1b7\x8c\x88]\x1b\xd7"+\xe6px@\xc3#\\'
 
 
 def create_db():
@@ -28,7 +64,7 @@ def create_db():
                     (
                     username text,
                     password text,
-                    access text
+                    level text
                     )''')
         conn.commit()
         return True
@@ -41,37 +77,19 @@ def create_db():
             conn.close()
 
 
-def add_user(user):
+def add_user(new_username, new_password):
     """ Insert new user into users table """
-    try:
-        print("Do not enter quotation mark otherwise it will be removed.")
-        # Ask for new username and password, and prevent from sql injection
-        new_username = str(input("Please enter new username: "))
-        new_username = sql_injection(new_username)
-        new_password = str(input("Please enter new password in length of between 8 and 25, \n"
-                                 "and have at least one number, at least one lowercase letter, \n"
-                                 "at least one uppercase letter, and at at least one special character(!@#$%^&*) \n"
-                                 "in the password: "))
-        while not password_strength(new_password):
-            new_password = str(input("Invalid input. Enter again: "))
-        new_password = sql_injection(new_password)
-        new_password = hash_pw(new_password)
-        # Set new user as least level
-        new_access = "1"
-        data_to_insert = [(new_username, new_password, new_access)]
-    except ValueError:
-        invalid()
-        exit()
+    # Set new user as least level
+    new_level = "1"
+    insert = [(new_username, new_password, new_level)]
     try:
         conn = sqlite3.connect('user.db')
         c = conn.cursor()
         # Insert new user to database
-        c.executemany("INSERT INTO users VALUES (?, ?, ?)", data_to_insert)
+        c.executemany("INSERT INTO users VALUES (?, ?, ?)", insert)
         conn.commit()
     except sqlite3.IntegrityError:
-        print("Error. Tried to add duplicate record!")
-    else:
-        print("Success")
+        flash("Error. Tried to add duplicate record!", "danger")
     finally:
         if c is not None:
             c.close()
@@ -104,104 +122,89 @@ def generate_password():
     return str_passwd
 
 
-def login(username, password, user):
+@app.route("/", methods=["POST", "GET"])
+def login():
     """
     Given user name and password,
     return message or main menu
-
-    :param username: str
-    :param password: str
     """
-    try:
-        conn = sqlite3.connect("user.db")
-        c = conn.cursor()
-        for row in c.execute("SELECT * FROM users"):
-            user[row[0]] = {'password': row[1], 'access': row[2]}
+    form = LoginForm()
+    # If click log in
+    if form.validate_on_submit():
+        try:
+            # Get username and password
+            username = sql_injection(form.username.data)
+            password = sql_injection(form.password.data)
+            conn = sqlite3.connect("user.db")
+            c = conn.cursor()
+            for row in c.execute("SELECT * FROM users"):
+                users[row[0]] = {'passwor    d': row[1], 'level': row[2]}
 
-        # Check if user is valid
-        if authenticate(user[username]['password'], password):
-            logged_in = True
-        else:
-            # 3 times max if input incorrect
-            logged_in = False
-        return logged_in
+            # Check if user is valid
+            if authenticate(users[username]['password'], password):
+                session.permanent = True
+                session["user"] = username
+                # Lead to the user page
+                return redirect(url_for("user"))
+            else:
+                # 3 times max if input incorrect
+                flash(f"Log in Failed", "danger")
 
-    except sqlite3.DatabaseError:
-        print("Error. Could not retrieve data.")
-    except KeyError:
-        # using invalid username will terminate the program
-        print("{} is not a valid username".format(username))
-        exit()
-    finally:
-        if c is not None:
-            c.close()
-        if conn is not None:
-            conn.close()
-
-
-def menu_area():
-    """Return different options for user choice"""
-    print("Press 1 for Time Reporting area")
-    print("Press 2 for Accounting area")
-    print("Press 3 for IT Helpdesk area")
-    print("Press 4 for Engineering Documents area")
-    print("Press 5 for Log out")
-
-
-def not_authorized():
-    """Return output if user is not authorized for this area"""
-    print(" ")
-    print("You are not authorized to access this area.")
-    menu_choice = input("Return to the menu? (y/n) ")
-    if menu_choice == 'y':
-        menu_area()
-    elif menu_choice == 'n':
-        exit()
+        except sqlite3.DatabaseError:
+            flash("Error. Could not retrieve data.", "danger")
+        except KeyError:
+            flash("Login Failed with KeyError.", "danger")
+        finally:
+            if c is not None:
+                c.close()
+            if conn is not None:
+                conn.close()
     else:
-        invalid()
-        exit()
+        # Lead to user page if user is logged in
+        if "user" in session:
+            return redirect(url_for("user"))
+        return render_template("login.html", form=form)
+    return render_template("login.html", form=form)
 
 
-def time_reporting():
-    """Return output if user is authorized for this area"""
-    print(" ")
-    print("You have now accessed the Time Reporting area.")
+@app.route("/user", methods=["POST", "GET"])
+def user():
+    """User page"""
+    if "user" in session:
+        user = session["user"]
+        return render_template("user.html", user=user)
+    else:
+        return redirect(url_for("login"))
 
 
-def accounting():
-    """Return output if user is authorized for this area"""
-    print(" ")
-    print("You have now accessed the accounting area.")
-
-
-def it_helpdesk():
-    """Return output if user is authorized for this area"""
-    print(" ")
-    print("You have now accessed the IT Helpdesk area.")
-
-
-def engineering_documents():
-    """Return output if user is authorized for this area"""
-    print(" ")
-    print("You have now accessed the Engineering Documents area.")
-
-
-def logout():
-    """Return output if system is logged out"""
-    print(" ")
-    print("System logged out.")
-
-
-def invalid():
-    """Return output if input is invalid"""
-    print(" ")
-    print("Invalid input")
+@app.route("/register", methods=["POST", "GET"])
+def register():
+    """Register page"""
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        # Create a database if there is no database
+        create_db()
+        username = sql_injection(form.username.data)
+        password = sql_injection(form.password.data)
+        # Insert user to database
+        add_user(username, hash_pw(password))
+        flash(f'{form.username.data} has created!', "success")
+        return redirect(url_for("login"))
+    return render_template('register.html', form=form)
 
 
 def sql_injection(value):
+    """
+    Stop user enter " to prevent sql injection
+
+    :param value: str
+    :return: str
+    """
     if '"' in value:
         value = value.replace('"', '')
-    return value
+        return value
+    else:
+        return value
 
 
 def enter(user):
@@ -235,100 +238,10 @@ def enter(user):
     return username
 
 
-# @app.route("/", methods=['GET', 'POST'])
-def home():
-    """Given user area choice, check user level
-    and return whether validated or whether succeed"""
-
-    # Authenticate user
-    create_db()
-    user = {}
-    login_choice = 0
-
-    while login_choice != 1 or login_choice != 2:
-        try:
-            login_choice = int(input("1. Log in\n2. Register\n->"))
-            if login_choice == 1:
-                # Login
-                username = enter(user)
-                break
-            elif login_choice == 2:
-                add_user(user)
-                # Login
-                username = enter(user)
-                break
-            else:
-                # Stop entering anything other than 1 and 2
-                invalid()
-        except ValueError:
-            # Stop entering anything other than number
-            invalid()
-
-    # Ask login function for the access level
-    access_level = user[username]['access']
-    # Call menu_area function
-    menu_area()
-    # Ask user choice as input
+if __name__ == "__main__":
+    users = {}
+    # pylint: disable=W0703
     try:
-        choice = int(input("Requesting for menu area: "))
-
-        # Authenticate level 1
-        while access_level == '1':
-            if choice == 1:
-                time_reporting()
-                break
-            elif choice == 2 or choice == 3 or choice == 4:
-                not_authorized()
-                choice = int(input("Requesting for menu area: "))
-            elif choice == 5:
-                logout()
-                break
-            else:
-                invalid()
-                break
-
-        # Authenticate level 2
-        while access_level == '2':
-            if choice == 1:
-                time_reporting()
-                break
-            if choice == 2:
-                accounting()
-                break
-            elif choice == 3:
-                it_helpdesk()
-                break
-            elif choice == 5:
-                logout()
-                break
-            else:
-                invalid()
-                break
-
-        # Authenticate level 3
-        while access_level == '3':
-            if choice == 1:
-                time_reporting()
-                break
-            if choice == 2:
-                accounting()
-                break
-            elif choice == 3:
-                it_helpdesk()
-                break
-            elif choice == 4:
-                engineering_documents()
-                break
-            elif choice == 5:
-                logout()
-                break
-            else:
-                invalid()
-                break
-    # Catch ValueError
-    except ValueError:
-        invalid()
-        exit()
-
-
-home()
+        app.run(debug=True, host='localhost', port=8097)
+    except Exception as err:
+        traceback.print_exc()
