@@ -6,6 +6,7 @@ CS 166 / Fall 2020
 
 from flask import Flask, redirect, url_for, render_template, flash, session, request
 from flask_wtf import FlaskForm
+from os import urandom
 from password_crack import hash_pw, authenticate
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
@@ -13,6 +14,10 @@ import random
 import sqlite3
 import string
 import traceback
+
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = str(urandom(7))
 
 
 # Register page's form group
@@ -51,16 +56,12 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Log In")
 
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = '\xca\x0c\x86\x04\x98@\x02b\x1b7\x8c\x88]\x1b\xd7"+\xe6px@\xc3#\\'
-
-
 def create_db():
-    """ Create table 'users' in 'user' database """
+    """ Create table 'account_table' in 'account_data' database """
     try:
-        conn = sqlite3.connect('user.db')
+        conn = sqlite3.connect('account_data.db')
         c = conn.cursor()
-        c.execute('''CREATE TABLE users
+        c.execute('''CREATE TABLE account_table
                     (
                     username text,
                     password text,
@@ -83,10 +84,10 @@ def add_user(new_username, new_password):
     new_level = "1"
     insert = [(new_username, new_password, new_level)]
     try:
-        conn = sqlite3.connect('user.db')
+        conn = sqlite3.connect('account_data.db')
         c = conn.cursor()
         # Insert new user to database
-        c.executemany("INSERT INTO users VALUES (?, ?, ?)", insert)
+        c.executemany("INSERT INTO account_table VALUES (?, ?, ?)", insert)
         conn.commit()
     except sqlite3.IntegrityError:
         flash("Error. Tried to add duplicate record!", "danger")
@@ -135,13 +136,13 @@ def login():
             # Get username and password
             username = sql_injection(form.username.data)
             password = sql_injection(form.password.data)
-            conn = sqlite3.connect("user.db")
+            conn = sqlite3.connect("account_data.db")
             c = conn.cursor()
-            for row in c.execute("SELECT * FROM users"):
-                users[row[0]] = {'passwor    d': row[1], 'level': row[2]}
+            for row in c.execute("SELECT * FROM account_table"):
+                account[row[0]] = {'password': row[1], 'level': row[2]}
 
             # Check if user is valid
-            if authenticate(users[username]['password'], password):
+            if authenticate(account[username]['password'], password):
                 session.permanent = True
                 session["user"] = username
                 # Lead to the user page
@@ -167,12 +168,26 @@ def login():
     return render_template("login.html", form=form)
 
 
+@app.route("/logout")
+def logout():
+    """
+    Log out from web
+    """
+    if "user" in session:
+        user = session["user"]
+        flash(f"{user} has logged out.", "success")
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
+
 @app.route("/user", methods=["POST", "GET"])
 def user():
     """User page"""
     if "user" in session:
         user = session["user"]
         return render_template("user.html", user=user)
+    elif request.method == "POST":
+        redirect(url_for("logout"))
     else:
         return redirect(url_for("login"))
 
@@ -195,7 +210,7 @@ def register():
 
 def sql_injection(value):
     """
-    Stop user enter " to prevent sql injection
+    Stop user entering " to prevent sql injection
 
     :param value: str
     :return: str
@@ -239,7 +254,7 @@ def enter(user):
 
 
 if __name__ == "__main__":
-    users = {}
+    account = {}
     # pylint: disable=W0703
     try:
         app.run(debug=True, host='localhost', port=8097)
